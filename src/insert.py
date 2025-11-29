@@ -1,6 +1,7 @@
 import pandas as pd
 import datetime
 import uuid
+from sqlalchemy import text
 from .config import dst_engine
 
 
@@ -29,13 +30,33 @@ def insert_guaranty(df_products):
     if df_products.empty:
         return
 
-    now = datetime.datetime.now()
-    rows = []
-    for _, p in df_products.iterrows():
-        start_date = p["ProductionDate"]
-        end_date = (start_date + datetime.timedelta(days=30*19)) if start_date else None
+    existing_ids = set()
+    with dst_engine.connect() as conn:
+        product_ids = list(df_products["Id"])
+        placeholders = ", ".join([f":id{i}" for i in range(len(product_ids))])
 
-        rows.append({
+        sql = f"""
+            SELECT ProductId
+            FROM mfu.Guaranty
+            WHERE ProductId IN ({placeholders})
+        """
+
+        params = {f"id{i}": pid for i, pid in enumerate(product_ids)}
+
+        rows = conn.execute(text(sql), params).fetchall()
+        existing_ids = {r[0] for r in rows}
+
+    now = datetime.datetime.now()
+    rows_to_insert = []
+
+    for _, p in df_products.iterrows():
+        if p["Id"] in existing_ids:
+            continue
+
+        start_date = p["ProductionDate"]
+        end_date = start_date + datetime.timedelta(days=30*19)
+
+        rows_to_insert.append({
             "Id": str(uuid.uuid4()).upper(),
             "IsActive": 1,
             "CreatedBy": "79D7759E-918B-4B3E-92B6-9D32161BC232",
@@ -50,13 +71,18 @@ def insert_guaranty(df_products):
             "Description": None,
             "ProductId": p["Id"]
         })
-
-    pd.DataFrame(rows).to_sql(
-        name="Guaranty",
-        schema="mfu",
-        con=dst_engine,
-        if_exists="append",
-        index=False,
-        chunksize=500,
-        method=None
-    )
+        
+    if rows_to_insert:
+        pd.DataFrame(rows_to_insert).to_sql(
+            name="Guaranty",
+            schema="mfu",
+            con=dst_engine,
+            if_exists="append",
+            index=False,
+            chunksize=500,
+            method=None
+        )
+        print(f"[OK] Inserted {len(rows_to_insert)} mfu.guaranty rows.")
+    else:
+        print("[INFO] No new guaranty rows needed.")
+        
