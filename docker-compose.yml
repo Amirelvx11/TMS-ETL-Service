@@ -1,0 +1,7 @@
+services:
+  tms_etl_service:
+    build: .
+    container_name: tms_etl
+    restart: always
+    env_file:
+      - .env
