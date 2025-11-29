@@ -52,7 +52,6 @@ def transform_products(df, os_map, mgr_map):
             "ManagerVersionId": mgr_id,
             "SerialNumber": sn,
             "TmsId": int(row["id"]),
-            "Description": None
         })
 
     print(f"[OK] Transformed {len(products)} rows for insert.")
