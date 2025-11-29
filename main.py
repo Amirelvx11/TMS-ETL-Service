@@ -6,6 +6,7 @@ from src.insert import insert_products, insert_guaranty
 def run():
     last_id = get_last_tms_id()
     os_map, mgr_map = fetch_lookup_maps()
+
     df_src = fetch_source_rows(last_id)
     df_prod = transform_products(df_src, os_map, mgr_map)
 

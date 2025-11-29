@@ -22,27 +22,26 @@ def insert_products(df: pd.DataFrame):
         )
         print(f"[OK] {len(df)} records inserted into mfu.Product.")
     except Exception as e:
-        print(f"[ERROR] Insert failed: {e}")
+        print(f"[ERROR] Product insert failed: {e}")
         raise
 
 
 def insert_guaranty(df_products):
     if df_products.empty:
+        print("[INFO] No guaranty needed.")
         return
 
-    existing_ids = set()
+    product_ids = list(df_products["Id"])
+    placeholders = ", ".join([f":id{i}" for i in range(len(product_ids))])
+
+    sql = f"""
+        SELECT ProductId
+        FROM mfu.Guaranty
+        WHERE ProductId IN ({placeholders})
+    """
+    params = {f"id{i}": pid for i, pid in enumerate(product_ids)}
+
     with dst_engine.connect() as conn:
-        product_ids = list(df_products["Id"])
-        placeholders = ", ".join([f":id{i}" for i in range(len(product_ids))])
-
-        sql = f"""
-            SELECT ProductId
-            FROM mfu.Guaranty
-            WHERE ProductId IN ({placeholders})
-        """
-
-        params = {f"id{i}": pid for i, pid in enumerate(product_ids)}
-
         rows = conn.execute(text(sql), params).fetchall()
         existing_ids = {r[0] for r in rows}
 
@@ -82,7 +81,7 @@ def insert_guaranty(df_products):
             chunksize=500,
             method=None
         )
-        print(f"[OK] Inserted {len(rows_to_insert)} mfu.guaranty rows.")
+        print(f"[OK] {len(rows_to_insert)} records inserted into mfu.Guaranty.")
     else:
         print("[INFO] No new guaranty rows needed.")
         

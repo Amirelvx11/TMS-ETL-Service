@@ -54,5 +54,5 @@ def transform_products(df, os_map, mgr_map):
             "TmsId": int(row["id"]),
         })
 
-    print(f"[OK] Transformed {len(products)} rows for insert.")
+    print(f"[OK] Transformed {len(products)} rows from h_tool.tab_reader_barcode for insert.")
     return pd.DataFrame(products)
