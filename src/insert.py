@@ -1,63 +1,69 @@
-import pandas as pd
-import datetime
 import uuid
+import pandas as pd
+from datetime import datetime, timedelta
 from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 from .config import dst_engine
+from src.logger import get_logger
 
+log = get_logger("insert")
 
-def insert_products(df: pd.DataFrame):
+def insert_products(df: pd.DataFrame) -> int:
+    """Insert transformed product rows into the destination database."""
     if df.empty:
-        print("[INFO] No new records to insert.")
-        return
+        return 0
 
-    try:   
-        df.to_sql(
-            name="Product",
-            schema="mfu",
-            con=dst_engine,
-            if_exists="append",
-            index=False,
-            chunksize=500,
-            method=None,
-        )
-        print(f"[OK] {len(df)} records inserted into mfu.Product.")
-    except Exception as e:
-        print(f"[ERROR] Product insert failed: {e}")
-        raise
+    try:
+        with dst_engine.begin() as conn:
+            df.to_sql(
+                name="Product",
+                schema="mfu",
+                con=conn,
+                if_exists="append",
+                index=False,
+                chunksize=500
+            )
+        log.info(f"Inserted {len(df)} rows into mfu.Product.")
+        return len(df)
+    except SQLAlchemyError as e:
+        log.error(f"Error inserting products into destination: {e}")
+        return 0
 
-
-def insert_guaranty(df_products):
+def insert_guaranty(df_products: pd.DataFrame):
+    """Insert guaranty data into the destination database."""
     if df_products.empty:
-        print("[INFO] No guaranty needed.")
-        return
+        return 0
 
     product_ids = list(df_products["Id"])
-    placeholders = ", ".join([f":id{i}" for i in range(len(product_ids))])
+    if not product_ids:
+        return 0
 
-    sql = f"""
-        SELECT ProductId
-        FROM mfu.Guaranty
-        WHERE ProductId IN ({placeholders})
-    """
+    # Prepare the SQL query to check existing ProductIds
+    placeholders = ", ".join([f":id{i}" for i in range(len(product_ids))])
+    sql = f"""SELECT ProductId FROM mfu.Guaranty WHERE ProductId IN ({placeholders})"""
     params = {f"id{i}": pid for i, pid in enumerate(product_ids)}
 
-    with dst_engine.connect() as conn:
-        rows = conn.execute(text(sql), params).fetchall()
-        existing_ids = {r[0] for r in rows}
-
-    now = datetime.datetime.now()
+    try:
+        with dst_engine.connect() as conn:
+            rows = conn.execute(text(sql), params).fetchall()
+            existing_ids = {r[0] for r in rows}
+    except SQLAlchemyError as e:
+        log.error(f"Error checking existing ProductIds: {e}")
+        return 0
+    
+    now = datetime.now()
     rows_to_insert = []
 
     for _, p in df_products.iterrows():
         if p["Id"] in existing_ids:
-            continue
+            continue 
 
         start_date = p["ProductionDate"]
-        end_date = start_date + datetime.timedelta(days=30*19)
-
+        end_date = start_date + timedelta(days=30 * 19)
+        
         rows_to_insert.append({
-            "Id": str(uuid.uuid4()).upper(),
             "IsActive": 1,
+            "Id": str(uuid.uuid4()).upper(),
             "CreatedBy": "79D7759E-918B-4B3E-92B6-9D32161BC232",
             "CreatedOn": now,
             "ModifiedBy": "79D7759E-918B-4B3E-92B6-9D32161BC232",
@@ -72,16 +78,21 @@ def insert_guaranty(df_products):
         })
         
     if rows_to_insert:
-        pd.DataFrame(rows_to_insert).to_sql(
-            name="Guaranty",
-            schema="mfu",
-            con=dst_engine,
-            if_exists="append",
-            index=False,
-            chunksize=500,
-            method=None
-        )
-        print(f"[OK] {len(rows_to_insert)} records inserted into mfu.Guaranty.")
+        try:
+            pd.DataFrame(rows_to_insert).to_sql(
+                name="Guaranty",
+                schema="mfu",
+                con=dst_engine,
+                if_exists="append",
+                index=False,
+                chunksize=500
+            )
+            log.info(f"Inserted {len(rows_to_insert)} rows into mfu.Guaranty.")
+        except SQLAlchemyError as e:
+            log.error(f"Error inserting new guaranty data: {e}")
+            return 0
+        return len(rows_to_insert)
     else:
-        print("[INFO] No new guaranty rows needed.")
-        
+        log.info("No new guaranty rows needed.")
+        return 0
+    
