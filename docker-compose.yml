@@ -5,3 +5,8 @@ services:
     restart: always
     env_file:
       - .env
+    volumes:
+      - etl_logs:/var/log
+
+volumes:
+  etl_logs:
