@@ -1,24 +1,30 @@
 import uuid
-from datetime import datetime
 import pandas as pd
+from datetime import datetime
 from src.logger import get_logger
+from .config import USER_GUID
+from .fetch import (
+    normalize_os,
+    manager_exact,
+    manager_short,
+    ensure_version_exists_os,
+    ensure_version_exists_manager,
+)
 
 log = get_logger("transform")
 
-def transform_products(df: pd.DataFrame, os_map: dict, mgr_map: dict) -> pd.DataFrame:
+def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
     """Transform source rows into the product format."""
     if df.empty:
         log.info("No data to transform.")
-        return pd.DataFrame(columns=[
-            "IsActive", "Id", "CreatedBy", "CreatedOn", "ModifiedBy", "ModifiedOn", "OwnerId",
-            "PartId", "IMEI1", "IMEI2", "HamtaCode", "ProductionDate", "OsVersionId", "ManagerVersionId",
-            "SerialNumber", "TmsId"
-        ])
+        return pd.DataFrame()
 
     now = datetime.now()
     products = []
 
     for _, row in df.iterrows():
+        
+        # Serial Number
         sn = str(row.get("sn") or "").strip()
 
         # PartId rules
@@ -37,8 +43,25 @@ def transform_products(df: pd.DataFrame, os_map: dict, mgr_map: dict) -> pd.Data
         elif imei_str.isdigit():
             imei1 = imei_str
 
-        os_id = os_map.get(str(row.get("cosver") or "").strip().upper())
-        mgr_id = mgr_map.get(str(row.get("libver") or "").strip().upper())
+        # OS ID
+        cos_raw = str(row.get("cosver") or "")
+        cos_norm = normalize_os(cos_raw)
+        os_id = os_map.get(cos_norm)
+        if not os_id:
+            os_id = ensure_version_exists_os(cos_raw)
+            if os_id:
+                os_map[cos_norm] = os_id
+
+        # Manager ID
+        lib_raw = str(row.get("libver") or "")
+        ex = manager_exact(lib_raw)
+        sh = manager_short(lib_raw)
+
+        mgr_id = mgr_map_exact.get(ex) or mgr_map_short.get(sh)
+        if not mgr_id:
+            mgr_id = ensure_version_exists_manager(lib_raw)
+            mgr_map_exact[ex] = mgr_id
+            mgr_map_short[sh] = mgr_id
 
         prod_date = pd.to_datetime(row.get("datetime"), errors="coerce")
         prod_date_val = prod_date.date() if pd.notna(prod_date) else None
@@ -46,11 +69,11 @@ def transform_products(df: pd.DataFrame, os_map: dict, mgr_map: dict) -> pd.Data
         products.append({
             "Id": str(uuid.uuid4()).upper(),
             "IsActive": 1,
-            "CreatedBy": "79D7759E-918B-4B3E-92B6-9D32161BC232",
+            "CreatedBy": USER_GUID,
             "CreatedOn": now,
-            "ModifiedBy": "79D7759E-918B-4B3E-92B6-9D32161BC232",
+            "ModifiedBy": USER_GUID,
             "ModifiedOn": now,
-            "OwnerId": "79D7759E-918B-4B3E-92B6-9D32161BC232",
+            "OwnerId": USER_GUID,
             "PartId": part_id,
             "IMEI1": imei1,
             "IMEI2": imei2,
