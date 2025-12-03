@@ -5,38 +5,26 @@ from src.logger import get_logger
 
 log = get_logger("main")
 
-def run() -> int:
+def run():
     """Main function to run the ETL pipeline."""
-    try:
-        last_id = get_last_tms_id()
-        os_map, mgr_map = fetch_lookup_maps()
+    log.info("ETL cycle started.")
 
-        df_src = fetch_source_rows(last_id)
+    last_id = get_last_tms_id()
+    df_src = fetch_source_rows(last_id)
 
-        if df_src.empty:
-            log.info("No new records to process.")
-            return 0
-        
-        df_prod = transform_products(df_src, os_map, mgr_map)
+    if df_src.empty:
+        log.info("No new rows found.")
+        return
+    
+    os_map, mgr_exact, mgr_short = fetch_lookup_maps()
+    df_prod = transform_products(df_src, os_map, mgr_exact, mgr_short)
 
-        if df_prod.empty:
-            log.info("No new records to process.")
-            return 0
+    inserted = insert_products(df_prod)
+    if inserted > 0:
+        insert_guaranty(df_prod)
 
-        inserted_products = insert_products(df_prod)
-        inserted_guaranty = insert_guaranty(df_prod)
-
-        if inserted_products == 0:
-            log.info("No new records to process.")  # single-line policy
-        else:
-            max_tms = int(df_prod["TmsId"].max())
-            log.info(f"Processed {inserted_products} products, {inserted_guaranty} guaranty rows. Updated through TmsId={max_tms}.")
-        return 0
-    except Exception as e:
-        log.exception(f"ETL failed: {e}")
-        return 1
-
+    log.info(f"ETL cycle completed. Processed {len(df_prod)} products.")
 
 if __name__ == "__main__":
-    import sys
-    sys.exit(run())
+    run()
+    
