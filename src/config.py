@@ -13,15 +13,15 @@ def _require_env(key: str) -> str:
         raise RuntimeError(f"Missing required environment variable: {key}")
     return val
 
-SOURCE_DB = _require_env("SOURCE_DB")
-TARGET_DB = _require_env("TARGET_DB")
-USER_GUID = _require_env("USER_GUID")
+# Required ENV variables
+SOURCE_DB = _require_env("SOURCE_DB") # pyodbc SQLAlchemy URI
+TARGET_DB = _require_env("TARGET_DB") # pyodbc SQLAlchemy URI
+USER_GUID = _require_env("USER_GUID") # MUST be valid in system.User.Id
 
-# Source engine for MySQL
+# Engines (MySQL and MSSQL)
 src_engine = create_engine(SOURCE_DB, pool_pre_ping=True)
 log.debug("Source engine (MySQL) created.")
 
-# Destination engine for MSSQL with advanced configurations
 dst_engine = create_engine(
     TARGET_DB,
     pool_pre_ping=True,
