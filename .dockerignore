@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
+venv/
+.env/
+.venv/
+
+# Config
+*.log
+*.sqlite3
+
+# Git / Editor / OS files
+.git/
+.gitignore
+.gitattributes
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local credential files
+*.pem
+*.crt
+*.key
+
+# Environment examples (allow only .env.example)
+.env
+docker-compose.override.yml
+
+# Caches
+__cache__/
+.cache/
+.mypy_cache/
+pytest_cache/
