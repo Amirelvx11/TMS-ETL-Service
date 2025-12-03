@@ -18,11 +18,11 @@ def get_logger(name: str = "tms_etl") -> logging.Logger:
     level = _LEVELS.get(os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
 
     handler = logging.StreamHandler(sys.stdout)
-    fmt = logging.Formatter(
+    format = logging.Formatter(
         fmt="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S%z",
     )
-    handler.setFormatter(fmt)
+    handler.setFormatter(format)
 
     logger.setLevel(level)
     logger.addHandler(handler)
