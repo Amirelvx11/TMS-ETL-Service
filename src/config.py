@@ -15,6 +15,7 @@ def _require_env(key: str) -> str:
 
 SOURCE_DB = _require_env("SOURCE_DB")
 TARGET_DB = _require_env("TARGET_DB")
+USER_GUID = _require_env("USER_GUID")
 
 # Source engine for MySQL
 src_engine = create_engine(SOURCE_DB, pool_pre_ping=True)
