@@ -1,7 +1,7 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from src.logger import get_logger
+from .logger import get_logger
 
 load_dotenv()
 log = get_logger("config")
