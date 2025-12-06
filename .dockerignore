@@ -31,10 +31,6 @@ Thumbs.db
 *.crt
 *.key
 
-# Environment examples (allow only .env.example)
-.env
-docker-compose.override.yml
-
 # Caches
 __cache__/
 .cache/
