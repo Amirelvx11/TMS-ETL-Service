@@ -23,7 +23,7 @@ def run():
     if inserted > 0:
         insert_guaranty(df_prod)
 
-    log.info(f"ETL cycle completed. Processed {len(df_prod)} products.")
+    log.info(f"ETL cycle completed. Processed {len(df_prod)} products. last inserted id:{last_id+len(df_prod)}")
 
 if __name__ == "__main__":
     run()
