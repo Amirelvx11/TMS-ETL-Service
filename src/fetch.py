@@ -103,7 +103,8 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
     try:
         with src_engine.connect() as conn:
             df = pd.read_sql(sql, conn, params={"last_id": last_id})
-        log.info(f"Fetched {len(df)} rows from source with last_id={last_id}")
+        if len(df) > 0:
+            log.info(f"Fetched {len(df)} rows from source with last_id={last_id}")
         return df
     except SQLAlchemyError as e:
         log.error(f"Error occurred while fetching rows from source: {e}")
