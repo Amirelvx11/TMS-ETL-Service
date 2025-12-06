@@ -71,8 +71,8 @@ def ensure_version_exists_manager(raw: str) -> str:
 def fetch_lookup_maps():
     try:
         with dst_engine.connect() as conn:
-            os_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.OperatingSystem", conn)
-            mgr_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.Manager", conn)
+            os_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.OperatingSystem WITH (NOLOCK)", conn)
+            mgr_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.Manager WITH (NOLOCK)", conn)
 
         os_map = {normalize_os(r["Title"]): r["Id"] for _, r in os_df.iterrows()}
         mgr_exact  = {manager_exact(r["Title"]): r["Id"] for _, r in mgr_df.iterrows()}
@@ -87,7 +87,7 @@ def fetch_lookup_maps():
 def get_last_tms_id() -> int:
     try:
         with dst_engine.connect() as conn:
-            val = conn.execute(text("SELECT ISNULL(MAX(TmsId), 0) FROM Hamon.mfu.Product")).scalar_one()
+            val = conn.execute(text("SELECT ISNULL(MAX(TmsId), 0) FROM Hamon.mfu.Product WITH (NOLOCK)")).scalar_one()
             return int(val)
     except SQLAlchemyError as e:
         log.error(f"Error occurred while getting last TmsId: {e}")
