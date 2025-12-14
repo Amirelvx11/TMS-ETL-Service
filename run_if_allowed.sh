@@ -1,6 +1,13 @@
 #!/bin/bash
+set -e
 
-# Current hour (00–23)
+# Load environment variables for cron
+if [ -f /app/.env ]; then
+    set -a
+    . /app/.env
+    set +a
+fi
+
 HOUR=$(date +%H)
 
 # Allowed window: 08 ≤ hour < 20
