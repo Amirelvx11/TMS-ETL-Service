@@ -4,7 +4,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# System dependencies + timzezone(Iran)
+# System dependencies + Iran timezone
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     gnupg \
