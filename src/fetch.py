@@ -26,7 +26,7 @@ def ensure_version_exists_os(raw: str) -> str:
     if not title:
         return None
 
-    sql_sel = """SELECT Id FROM Hamon.mfu.OperatingSystem WHERE UPPER(Title) = :t"""
+    sql_sel = "SELECT Id FROM Hamon.mfu.OperatingSystem WHERE UPPER(Title) = :t"
     with dst_engine.begin() as conn:
         row = conn.execute(text(sql_sel), {"t": title}).fetchone()
         if row:
@@ -95,7 +95,7 @@ def get_last_tms_id() -> int:
 
 def fetch_source_rows(last_id: int) -> pd.DataFrame:
     sql = text("""
-        SELECT id, sn, imei, libver, cosver, datetime
+        SELECT id, tusn, sn, imei, libver, cosver, datetime
         FROM h_tool.tab_reader_barcode AS trb
         WHERE trb.id > :last_id
         ORDER BY trb.id ASC
