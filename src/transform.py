@@ -27,6 +27,9 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
         # Serial Number
         sn = str(row.get("sn") or "").strip()
 
+        # tusn (complete number of serial number)
+        tusn = str(row.get("tusn") or "").strip()
+        
         # PartId rules
         part_id = ""
         if sn.startswith("00"):
@@ -83,6 +86,7 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
             "ManagerVersionId": mgr_id,
             "SerialNumber": sn,
             "TmsId": int(row["id"]),
+            "Tusn": tusn,
         })
 
     log.info(f"Transformed {len(products)} rows.")
