@@ -1,6 +1,7 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
+from backend_toolkit.logger import get_logger
 
 load_dotenv()
 

@@ -99,4 +99,3 @@ def insert_guaranty(df_products: pd.DataFrame):
     except SQLAlchemyError as e:
         log.error(f"Error inserting new guaranty data: {e}")
         return 0
-    

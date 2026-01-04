@@ -70,4 +70,3 @@ services:
 networks:
   logs_net:
     external: true
-
