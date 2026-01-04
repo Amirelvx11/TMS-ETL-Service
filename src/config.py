@@ -1,10 +1,8 @@
 import os
 from dotenv import load_dotenv
 from sqlalchemy import create_engine
-from src.backend_toolkit.logger import get_logger
 
 load_dotenv()
-log = get_logger("config")
 
 def _require_env(key: str) -> str:
     """Ensure required environment variables are present."""
@@ -20,7 +18,6 @@ USER_GUID = _require_env("USER_GUID") # MUST be valid in system.User.Id
 
 # Engines (MySQL and MSSQL)
 src_engine = create_engine(SOURCE_DB, pool_pre_ping=True)
-log.debug("Source engine (MySQL) created.")
 
 dst_engine = create_engine(
     TARGET_DB,
@@ -31,4 +28,3 @@ dst_engine = create_engine(
     pool_recycle=1800,
     connect_args={"timeout": 5, "LoginTimeout": 5},
 )
-log.debug("Destination engine (MSSQL) created.")

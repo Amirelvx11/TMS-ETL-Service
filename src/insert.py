@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from .logger import get_logger
+from backend_toolkit.logger import get_logger
 from .config import dst_engine, USER_GUID
 
 log = get_logger("insert")
@@ -50,13 +50,13 @@ def insert_guaranty(df_products: pd.DataFrame):
     except SQLAlchemyError as e:
         log.error(f"Error checking existing ProductIds for guaranty: {e}")
         return 0
-    
+
     now = datetime.now()
     rows_to_insert = []
 
     for _, p in df_products.iterrows():
         if p["Id"] in existing_ids:
-            continue 
+            continue
 
         start_date = p["ProductionDate"]
         if start_date is None:
@@ -64,7 +64,7 @@ def insert_guaranty(df_products: pd.DataFrame):
             continue
 
         end_date = start_date + timedelta(days=30 * 19)
-        
+
         rows_to_insert.append({
             "IsActive": 1,
             "Id": str(uuid.uuid4()).upper(),
@@ -94,7 +94,7 @@ def insert_guaranty(df_products: pd.DataFrame):
             index=False,
             chunksize=500
         )
-        log.info(f"Inserted {len(rows_to_insert)} guaranty rows.")
+        log.info(f"Inserted {len(rows_to_insert)} rows into guaranty.")
         return len(rows_to_insert)
     except SQLAlchemyError as e:
         log.error(f"Error inserting new guaranty data: {e}")

@@ -3,7 +3,7 @@ import uuid
 import pandas as pd
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
-from .logger import get_logger
+from backend_toolkit.logger import get_logger
 from .config import src_engine, dst_engine, USER_GUID
 
 log = get_logger("fetch")
@@ -79,7 +79,7 @@ def fetch_lookup_maps():
         mgr_short  = {manager_short(r["Title"]): r["Id"] for _, r in mgr_df.iterrows()}
 
         return os_map, mgr_exact, mgr_short
-    
+
     except SQLAlchemyError as e:
         log.error(f"fetch_lookup_maps error: {e}")
         return {}, {}, {}
@@ -104,9 +104,8 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         with src_engine.connect() as conn:
             df = pd.read_sql(sql, conn, params={"last_id": last_id})
         if len(df) > 0:
-            log.info(f"Fetched {len(df)} rows from source with last_id={last_id}")
+            log.info(f"Fetched {len(df)} rows from source with last id={last_id}")
         return df
     except SQLAlchemyError as e:
         log.error(f"Error occurred while fetching rows from source: {e}")
-        return pd.DataFrame()
-    
+        return pd.DataFrame() 

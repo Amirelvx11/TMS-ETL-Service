@@ -1,7 +1,7 @@
 import uuid
 import pandas as pd
 from datetime import datetime
-from src.logger import get_logger
+from backend_toolkit.logger import get_logger
 from .config import USER_GUID
 from .fetch import (
     normalize_os,
@@ -23,13 +23,13 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
     products = []
 
     for _, row in df.iterrows():
-        
+
         # Serial Number
         sn = str(row.get("sn") or "").strip()
 
         # tusn (complete number of serial number)
         tusn = str(row.get("tusn") or "").strip()
-        
+
         # PartId rules
         part_id = ""
         if sn.startswith("00"):
