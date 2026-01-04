@@ -108,9 +108,5 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         return df
     except SQLAlchemyError as e:
         log.error(f"Error occurred while fetching rows from source: {e}")
-<<<<<<< Updated upstream
-        return pd.DataFrame() 
-=======
-        return pd.DataFrame()
 
->>>>>>> Stashed changes
+        return pd.DataFrame() 
