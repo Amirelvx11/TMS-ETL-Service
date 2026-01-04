@@ -1,17 +1,73 @@
 services:
   tms_etl_service:
-    build: .
     container_name: tms_etl
+    image: tms-etl-service
+    build: .
     restart: always
+
     env_file:
       - .env
+
+    networks:
+      - logs_net
+
     volumes:
       - ./logs:/var/log
-    command: >
-      sh -c "/app/run_if_allowed.sh && cron -f"
+
+    command: ["python", "/app/run_scheduler.py"]
+
     healthcheck:
-      test: ["CMD-SHELL", "grep -q 'Running ETL' /var/log/etl_scheduler.log"]
-      interval: 60s
+      test:
+        - CMD-SHELL
+        - |
+          python - << 'EOF'
+          import os
+          import sys
+          from datetime import datetime, timedelta
+          from zoneinfo import ZoneInfo
+          from pymongo import MongoClient
+
+          REQUIRED = ["BT_MONGO_URI", "BT_MONGO_DB", "BT_MONGO_COLLECTION"]
+          for r in REQUIRED:
+              if not os.getenv(r):
+                  sys.exit(1)
+
+          IRAN = ZoneInfo("Asia/Tehran")
+          cutoff = (
+              datetime.now(IRAN) - timedelta(minutes=70)
+          ).strftime("%Y-%m-%d %H:%M:%S")
+
+          client = MongoClient(
+              os.environ["BT_MONGO_URI"],
+              serverSelectionTimeoutMS=2000,
+          )
+          client.admin.command("ping")
+
+          col = client[
+              os.environ["BT_MONGO_DB"]
+          ][
+              os.environ["BT_MONGO_COLLECTION"]
+          ]
+
+          doc = col.find_one(
+              {
+                  "message": "ETL heartbeat",
+                  "timestamp": {"$$gte": cutoff},
+              },
+              sort=[("timestamp", -1)],
+          )
+
+          if not doc:
+              sys.exit(1)
+
+          sys.exit(0)
+          EOF
+      interval: 5m
       timeout: 10s
-      retries: 5
-      start_period: 30s
+      retries: 3
+      start_period: 10m
+
+networks:
+  logs_net:
+    external: true
+
