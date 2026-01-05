@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from backend_toolkit.logger import get_logger
-from backend_toolkit.utils.time import now_iran_str
+from backend_toolkit.utils.timezone import now_iran_str
 from main import run as run_etl
 
 logger = get_logger("scheduler")
@@ -67,16 +67,11 @@ def main() -> None:
             now = datetime.now(IRAN)
 
             if should_run(now):
-                logger.info("ETL triggered")
                 run_etl()
                 logger.info(
                     "ETL heartbeat",
-                    extra={
-                        "hour": now.hour,
-                        "timestamp": now_iran_str(),
-                    },
+                    extra={"hour": now.hour},
                 )
-
         except Exception:
             logger.exception("Scheduler error")
 
