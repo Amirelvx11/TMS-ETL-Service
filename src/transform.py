@@ -89,7 +89,7 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
         })
 
     logger.debug(
-        "Transformation completed",
+        "transformation completed",
         extra={"rows": len(products)},
     )
     return pd.DataFrame(products)

@@ -116,7 +116,7 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
             df = pd.read_sql(sql, conn, params={"last_id": last_id})
         if len(df) > 0:
             logger.info(
-                "Fetched source rows",
+                "fetched source rows",
                 extra={
                     "count": len(df),
                     "from_tms_id": last_id,

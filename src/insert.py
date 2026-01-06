@@ -25,12 +25,12 @@ def insert_products(df: pd.DataFrame) -> int:
                 chunksize=500
             )
         logger.info(
-            "Products inserted",
+            "products inserted",
             extra={"count": len(df)},
         )
         return len(df)
     except SQLAlchemyError:
-        logger.exception("Product insertion failed")
+        logger.exception("product insertion failed")
         return 0
 
 
@@ -53,7 +53,7 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
                 rows = conn.execute(text(sql), params).fetchall()
                 existing_ids.update(r[0] for r in rows)     
     except SQLAlchemyError as e:
-        logger.exception("Error checking existing ProductIds for guaranty")
+        logger.exception("error checking existing productIds for guaranty")
         return 0
 
     now = datetime.now()
@@ -102,10 +102,10 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
             chunksize=500
         )
         logger.info(
-            "Guaranty inserted",
+            "guaranty inserted",
             extra={"count": len(rows_to_insert)},
         )
         return len(rows_to_insert)
     except SQLAlchemyError as e:
-        logger.exception("Guaranty insertion failed")
+        logger.exception("guaranty insertion failed")
         return 0
