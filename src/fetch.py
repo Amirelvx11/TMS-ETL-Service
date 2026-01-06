@@ -6,7 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend_toolkit.logger import get_logger
 from .config import src_engine, dst_engine, USER_GUID
 
-log = get_logger("fetch")
+logger = get_logger("fetch")
 
 def normalize_os(value: str) -> str:
     if not value:
@@ -26,7 +26,7 @@ def ensure_version_exists_os(raw: str) -> str:
     if not title:
         return None
 
-    sql_sel = "SELECT Id FROM Hamon.mfu.OperatingSystem WHERE UPPER(Title) = :t"
+    sql_sel = "SELECT Id FROM Hamon.mfu.OperatingSystem WITH(NOLOCK) WHERE UPPER(Title) = :t"
     with dst_engine.begin() as conn:
         row = conn.execute(text(sql_sel), {"t": title}).fetchone()
         if row:
@@ -39,15 +39,21 @@ def ensure_version_exists_os(raw: str) -> str:
             VALUES (:id, :title, 1, :u, GETDATE(), :u, GETDATE(), :u, NULL)
         """
         conn.execute(text(sql_ins), {"id": new_id, "title": title, "u": USER_GUID})
-        log.info(f"Inserted new OS version: {title} ({new_id})")
+        logger.warning(
+                "Inserted new OS version.",
+                extra={
+                 "version": title,
+                 "os_version_id": new_id,
+                },
+        )
         return new_id
-    
+
 def ensure_version_exists_manager(raw: str) -> str:
     """Manager insert logic: exact → short → insert exact."""
     exact = manager_exact(raw)
     short = manager_short(raw)
 
-    sql_sel = """SELECT Id FROM Hamon.mfu.Manager WHERE UPPER(Title) = :t"""
+    sql_sel = """SELECT Id FROM Hamon.mfu.Manager WITH (NOLOCK) WHERE UPPER(Title) = :t"""
 
     with dst_engine.begin() as conn:
         r1 = conn.execute(text(sql_sel), {"t": exact}).fetchone()
@@ -65,7 +71,13 @@ def ensure_version_exists_manager(raw: str) -> str:
             VALUES (:id, :title, 1, :u, GETDATE(), :u, GETDATE(), :u, NULL)
         """
         conn.execute(text(sql_ins), {"id": new_id, "title": exact, "u": USER_GUID})
-        log.info(f"Inserted new Manager version: {exact} ({new_id})")
+        logger.warning(
+                "Inserted new Manager version.",
+                extra={
+                        "version": exact,
+                        "manager_version_id": new_id,
+                },
+        )
         return new_id
 
 def fetch_lookup_maps():
@@ -79,9 +91,8 @@ def fetch_lookup_maps():
         mgr_short  = {manager_short(r["Title"]): r["Id"] for _, r in mgr_df.iterrows()}
 
         return os_map, mgr_exact, mgr_short
-
     except SQLAlchemyError as e:
-        log.error(f"fetch_lookup_maps error: {e}")
+        logger.exception("Lookup map fetch failed")
         return {}, {}, {}
 
 def get_last_tms_id() -> int:
@@ -90,7 +101,7 @@ def get_last_tms_id() -> int:
             val = conn.execute(text("SELECT ISNULL(MAX(TmsId), 0) FROM Hamon.mfu.Product WITH (NOLOCK)")).scalar_one()
             return int(val)
     except SQLAlchemyError as e:
-        log.error(f"Error occurred while getting last TmsId: {e}")
+        logger.exception("Failed to fetch last TmsId")
         return 0
 
 def fetch_source_rows(last_id: int) -> pd.DataFrame:
@@ -104,9 +115,15 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         with src_engine.connect() as conn:
             df = pd.read_sql(sql, conn, params={"last_id": last_id})
         if len(df) > 0:
-            log.info(f"Fetched {len(df)} rows from source with last id={last_id}")
+            logger.info(
+                "Fetched source rows",
+                extra={
+                    "count": len(df),
+                    "from_tms_id": last_id,
+                },
+            )
+            
         return df
     except SQLAlchemyError as e:
-        log.error(f"Error occurred while fetching rows from source: {e}")
-
-        return pd.DataFrame() 
+        logger.exception("Failed to fetch source rows")
+        return pd.DataFrame()
