@@ -11,12 +11,11 @@ from .fetch import (
     ensure_version_exists_manager,
 )
 
-log = get_logger("transform")
+logger = get_logger("transform")
 
 def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
     """Transform source rows into the product format."""
     if df.empty:
-        log.info("No data to transform.")
         return pd.DataFrame()
 
     now = datetime.now()
@@ -89,5 +88,8 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
             "Tusn": tusn,
         })
 
-    log.info(f"Transformed {len(products)} rows.")
+    logger.debug(
+        "Transformation completed",
+        extra={"rows": len(products)},
+    )
     return pd.DataFrame(products)
