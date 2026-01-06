@@ -6,7 +6,8 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend_toolkit.logger import get_logger
 from .config import dst_engine, USER_GUID
 
-log = get_logger("insert")
+logger = get_logger("insert")
+
 
 def insert_products(df: pd.DataFrame) -> int:
     """Insert transformed product rows into the destination database."""
@@ -23,13 +24,17 @@ def insert_products(df: pd.DataFrame) -> int:
                 index=False,
                 chunksize=500
             )
-        log.info(f"Inserted {len(df)} rows into products.")
+        logger.info(
+            "Products inserted",
+            extra={"count": len(df)},
+        )
         return len(df)
-    except SQLAlchemyError as e:
-        log.error(f"Error inserting products into destination: {e}")
+    except SQLAlchemyError:
+        logger.exception("Product insertion failed")
         return 0
 
-def insert_guaranty(df_products: pd.DataFrame):
+
+def insert_guaranty(df_products: pd.DataFrame) -> int:
     """Insert guaranty data into the destination database."""
     if df_products.empty:
         return 0
@@ -46,9 +51,9 @@ def insert_guaranty(df_products: pd.DataFrame):
                 ph = ",".join([f":id{k}" for k in range(len(batch))])
                 sql = f"SELECT ProductId FROM mfu.Guaranty WHERE ProductId IN ({ph})"
                 rows = conn.execute(text(sql), params).fetchall()
-                existing_ids.update(r[0] for r in rows)
+                existing_ids.update(r[0] for r in rows)     
     except SQLAlchemyError as e:
-        log.error(f"Error checking existing ProductIds for guaranty: {e}")
+        logger.exception("Error checking existing ProductIds for guaranty")
         return 0
 
     now = datetime.now()
@@ -60,7 +65,10 @@ def insert_guaranty(df_products: pd.DataFrame):
 
         start_date = p["ProductionDate"]
         if start_date is None:
-            log.warning(f"Skipping guaranty: Product {p['Id']} has NULL ProductionDate")
+            logger.warning(
+                "Skipping guaranty due to NULL ProductionDate",
+                extra={"product_id": p["Id"]},
+            )
             continue
 
         end_date = start_date + timedelta(days=30 * 19)
@@ -82,7 +90,6 @@ def insert_guaranty(df_products: pd.DataFrame):
         })
 
     if not rows_to_insert:
-        log.info("No new guaranty rows required.")
         return 0
 
     try:
@@ -94,8 +101,11 @@ def insert_guaranty(df_products: pd.DataFrame):
             index=False,
             chunksize=500
         )
-        log.info(f"Inserted {len(rows_to_insert)} rows into guaranty.")
+        logger.info(
+            "Guaranty inserted",
+            extra={"count": len(rows_to_insert)},
+        )
         return len(rows_to_insert)
     except SQLAlchemyError as e:
-        log.error(f"Error inserting new guaranty data: {e}")
+        logger.exception("Guaranty insertion failed")
         return 0
