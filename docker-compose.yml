@@ -12,7 +12,7 @@ services:
       - logs_net
 
     volumes:
-      - ./logs:/var/log
+      - tms-etl-service_logs:/var/log
 
     command: ["python", "/app/run_scheduler.py"]
 
@@ -22,6 +22,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 10m
+
+volumes:
+  tms-etl-service_logs:
+    name: tms-etl-service_logs
+    external: true
 
 networks:
   logs_net:
