@@ -1,5 +1,4 @@
-import os
-import sys
+import os, sys
 from datetime import datetime, timedelta, time as dt_time
 from zoneinfo import ZoneInfo
 from pymongo import MongoClient
@@ -22,38 +21,31 @@ def within_allowed_window(now: datetime) -> bool:
 
 
 def main() -> None:
+    
+    now = datetime.now(IRAN)
+    cutoff = now - timedelta(minutes=HEALTH_WINDOW_MINUTES)
+    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
+    
     # --- ENV Validation ---
     REQUIRED = [
+        "SOURCE_DB",
+        "TARGET_DB",
+        "USER_GUID",
         "BT_MONGO_URI",
         "BT_MONGO_DB",
         "BT_MONGO_COLLECTION",
         "BT_APP_NAME",
         "BT_ENVIRONMENT",
-        "SOURCE_DB",
-        "TARGET_DB",
-        "USER_GUID",
     ]
 
     for key in REQUIRED:
         if not os.getenv(key):
             sys.exit(1)
 
-    now = datetime.now(IRAN)
-    cutoff = now - timedelta(minutes=HEALTH_WINDOW_MINUTES)
-    cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-
     # --- Mongo ---
-    client = MongoClient(
-        os.environ["BT_MONGO_URI"],
-        serverSelectionTimeoutMS=3000,
-    )
+    client = MongoClient(os.environ["BT_MONGO_URI"], serverSelectionTimeoutMS=3000,)
+    col = client[os.environ["BT_MONGO_DB"]][os.environ["BT_MONGO_COLLECTION"]]
     client.admin.command("ping")
-
-    col = client[
-        os.environ["BT_MONGO_DB"]
-    ][
-        os.environ["BT_MONGO_COLLECTION"]
-    ]
 
     base_query = {
         "app": os.environ["BT_APP_NAME"],
@@ -67,11 +59,8 @@ def main() -> None:
         sort=[("timestamp", -1)],
     )
 
-    if within_allowed_window(now):
-        if not last_log:
-            sys.exit(1)
-    else:
-        pass
+    if within_allowed_window(now) and not last_log:
+        sys.exit(1)
 
     # --- Error detection ---
     error_log = col.find_one(
@@ -88,14 +77,8 @@ def main() -> None:
         msg = (last_log.get("message") or "").lower()
 
         HEALTHY_MARKERS = (
-            "scheduler",
-            "triggering",
-            "started",
-            "validation",
-            "fetched",
-            "inserted",
-            "completed",
-            "finished",
+            "scheduler","triggering","started","validation",
+            "fetched","inserted","completed","finished",
         )
 
         if not any(m in msg for m in HEALTHY_MARKERS):
@@ -121,7 +104,7 @@ def main() -> None:
     except SQLAlchemyError:
         sys.exit(1)
         
-
+    # ALL VALIDATION & TESTS PASSED & SUCCESSFUL!
     sys.exit(0)
 
 
