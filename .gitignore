@@ -1,28 +1,63 @@
+# Python
 __pycache__/
+__pypackages__/
 .pytest_cache/
 *.pyc
 *.py[cod]
+*.pyo
+
+# Virtual Environments
 .venv/
 venv/
 ENV/
 env/
 .virtualenv/
+
+# Environment & Secrets
 .env
 .env.*
 !.env.example
+
+# Logs & Runtime Artifacts
 *.log
 logs/
+
+# Packaging / Build
 build/
 dist/
 .eggs/
 *.egg-info/
+wheels/
+pip-wheel-metadata/
+
+# IDEs & Editors
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
 *.swp
 *.swo
+
+# Docker
 .dockerignore
-src/backend_toolkit
-*.backend_toolkit
-backend_toolkit
+docker-compose.override.yml
+docker-compose.*.yml
+*.tar
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# ETL artifacts
+data/
+tmp/
+cache/
+*.db
+*.bak
+
+# CI / CD
+.cache/
+pip-log.txt
+
+# Misc
+.pypirc

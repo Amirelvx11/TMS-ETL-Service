@@ -2,7 +2,13 @@
 FROM python:3.12-slim AS builder
 
 WORKDIR /build
-ENV PIP_NO_CACHE_DIR=1
+
+RUN python -m pip install --upgrade pip setuptools wheel
+
+ENV \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DEFAULT_TIMEOUT=300 \
+    PIP_RETRIES=10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     git gcc build-essential pkg-config unixodbc-dev default-libmysqlclient-dev \
@@ -10,9 +16,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY requirements.txt .
 RUN pip wheel \
-    --no-cache-dir \
     --wheel-dir /wheels \
-    --default-timeout=120 \
     -r requirements.txt
 
 # Runtime Stage
@@ -48,7 +52,7 @@ RUN curl https://packages.microsoft.com/keys/microsoft.asc \
 WORKDIR /app
 
 COPY --from=builder /wheels /wheels
-RUN python -m pip install --upgrade pip \
+RUN python -m pip install --upgrade pip setuptools \
  && pip install --no-cache-dir /wheels/* \
  && rm -rf /wheels
 
@@ -56,6 +60,6 @@ COPY . .
 
 RUN mkdir -p /var/log \
  && touch /var/log/log_etl.log /var/log/log_etl_scheduler.log \
- && chmod 0666 /var/log/log_etl.log /var/log/log_etl_scheduler.log
+ && chmod 0644 /var/log/log_etl.log /var/log/log_etl_scheduler.log
 
 CMD ["python", "/app/run_scheduler.py"]
