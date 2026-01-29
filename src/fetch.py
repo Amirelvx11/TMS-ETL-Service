@@ -6,7 +6,12 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend_toolkit.logger import get_logger
 from .config import src_engine, dst_engine, USER_GUID
 
+
 logger = get_logger("fetch")
+
+
+# ---------- HELPER METHODS ----------
+
 
 def normalize_os(value: str) -> str:
     if not value:
@@ -14,14 +19,24 @@ def normalize_os(value: str) -> str:
     value = value.strip().upper()
     return re.sub(r"[A-Z]$", "", value)
 
+
 def manager_exact(value: str) -> str:
     return value.strip().upper()
+
 
 def manager_short(value: str) -> str:
     v = value.strip().upper()
     return v[2:] if len(v) > 2 and v[:2].isalpha() else v
 
+
+# ---------- FETCH & VERSION CHECK ----------
+
+
 def ensure_version_exists_os(raw: str) -> str:
+    """OS version checking.
+    - if Version Title exist -> use that existing guid From Os Table
+    - if not -> create & insert new version in OS Table
+    """
     title = normalize_os(raw)
     if not title:
         return None
@@ -47,6 +62,7 @@ def ensure_version_exists_os(raw: str) -> str:
                 },
         )
         return new_id
+
 
 def ensure_version_exists_manager(raw: str) -> str:
     """Manager insert logic: exact → short → insert exact."""
@@ -80,7 +96,9 @@ def ensure_version_exists_manager(raw: str) -> str:
         )
         return new_id
 
+
 def fetch_lookup_maps():
+    "Get last os & manager versions from Target DB."
     try:
         with dst_engine.connect() as conn:
             os_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.OperatingSystem WITH (NOLOCK)", conn)
@@ -95,7 +113,9 @@ def fetch_lookup_maps():
         logger.exception("Lookup map fetch failed")
         return {}, {}, {}
 
+
 def get_last_tms_id() -> int:
+    "Fetch last updated Id on Target DB."
     try:
         with dst_engine.connect() as conn:
             val = conn.execute(text("SELECT ISNULL(MAX(TmsId), 0) FROM Hamon.mfu.Product WITH (NOLOCK)")).scalar_one()
@@ -104,7 +124,9 @@ def get_last_tms_id() -> int:
         logger.exception("Failed to fetch last TmsId")
         return 0
 
+
 def fetch_source_rows(last_id: int) -> pd.DataFrame:
+    "Fetch Source DB records for new changes, you can adjust this based on your columns."
     sql = text("""
         SELECT id, tusn, sn, imei, libver, cosver, datetime
         FROM h_tool.tab_reader_barcode AS trb
@@ -122,7 +144,6 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
                     "from_tms_id": last_id,
                 },
             )
-            
         return df
     except SQLAlchemyError as e:
         logger.exception("Failed to fetch source rows")
