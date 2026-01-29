@@ -6,6 +6,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend_toolkit.logger import get_logger
 from .config import dst_engine, USER_GUID
 
+
 logger = get_logger("insert")
 
 
@@ -13,7 +14,6 @@ def insert_products(df: pd.DataFrame) -> int:
     """Insert transformed product rows into the destination database."""
     if df.empty:
         return 0
-
     try:
         with dst_engine.begin() as conn:
             df.to_sql(
@@ -42,7 +42,7 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
     product_ids = list(df_products["Id"])
     existing_ids = set()
     batch_size = 2000  # MSSQL max = 2100 params
-
+    
     try:
         with dst_engine.connect() as conn:
             for i in range(0, len(product_ids), batch_size):
