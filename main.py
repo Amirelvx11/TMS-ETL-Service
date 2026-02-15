@@ -14,7 +14,7 @@ def run():
     try:
         start_ts = time.monotonic()
         start_last_id = get_last_tms_id()
-        
+
         df_src = fetch_source_rows(start_last_id)
         if df_src.empty:
             logger.info(
@@ -50,7 +50,7 @@ def run():
         )
     except Exception as e:
         logger.critical("main etl cycle error")
-        raise 
+        raise
 
 if __name__ == "__main__":
     run()
