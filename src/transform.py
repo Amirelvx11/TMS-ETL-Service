@@ -3,17 +3,13 @@ import pandas as pd
 from datetime import datetime
 from backend_toolkit.logger import get_logger
 from .config import USER_GUID
-from .fetch import (
-    normalize_os,
-    manager_exact,
-    manager_short,
-    ensure_version_exists_os,
-    ensure_version_exists_manager,
-)
+from .fetch import normalize_os, manager_exact, manager_short
+
 
 logger = get_logger("transform")
 
-def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
+
+def transform_products(df, os_map, mgr_exact, mgr_short) -> pd.DataFrame | None:
     """Transform source rows into the product format."""
     if df.empty:
         return pd.DataFrame()
@@ -21,10 +17,9 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
     now = datetime.now()
     products = []
 
-    for _, row in df.iterrows():
-
-        sn = str(row.get("sn") or "").strip()
-        tusn = str(row.get("tusn") or "").strip()
+    for r in df.itertuples(index=False):
+        sn = (r.sn or "").strip()
+        tusn = (r.tusn or "").strip()
         
         part_id = ""
         if sn.startswith("00"):
@@ -32,34 +27,21 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
         elif sn.startswith("05"):
             part_id = "B159B8DA-AD61-4C25-97C8-C82CF7955D06"
 
-        imei_str = str(row.get("imei") or "").strip()
         imei1, imei2 = "0", "0"
-        if "," in imei_str:
-            parts = [x.strip() for x in imei_str.split(",")]
-            imei1, imei2 = parts[0], parts[1] if len(parts) > 1 else "0"
-        elif imei_str.isdigit():
-            imei1 = imei_str
+        imei_raw = (r.imei or "").strip()
+        if "," in imei_raw:
+            p = imei_raw.split(",")
+            imei1, imei2 = p[0].strip(), p[1].strip() if len(p) > 1 else "0"
+        elif imei_raw.isdigit():
+            imei1, imei2 = imei_raw, "0"
 
-        cos_raw = str(row.get("cosver") or "")
-        cos_norm = normalize_os(cos_raw)
-        os_id = os_map.get(cos_norm)
-        if not os_id:
-            os_id = ensure_version_exists_os(cos_raw)
-            if os_id:
-                os_map[cos_norm] = os_id
-                
-        lib_raw = str(row.get("libver") or "")
-        ex = manager_exact(lib_raw)
-        sh = manager_short(lib_raw)
+        os_id = os_map.get(normalize_os(r.cosver))
 
-        mgr_id = mgr_map_exact.get(ex) or mgr_map_short.get(sh)
-        if not mgr_id:
-            mgr_id = ensure_version_exists_manager(lib_raw)
-            mgr_map_exact[ex] = mgr_id
-            mgr_map_short[sh] = mgr_id
+        mgr_id = mgr_exact.get(manager_exact(r.libver)) or mgr_short.get(manager_short(r.libver))
 
-        prod_date = pd.to_datetime(row.get("datetime"), errors="coerce")
-        prod_date_val = prod_date.date() if pd.notna(prod_date) else None
+
+        prod_dt = pd.to_datetime(r.datetime, errors="coerce")
+        prod_date = prod_dt.date() if pd.notna(prod_dt) else None
 
         products.append({
             "Id": str(uuid.uuid4()).upper(),
@@ -73,11 +55,11 @@ def transform_products(df, os_map, mgr_map_exact, mgr_map_short):
             "IMEI1": imei1,
             "IMEI2": imei2,
             "HamtaCode": "",
-            "ProductionDate": prod_date_val,
+            "ProductionDate": prod_date,
             "OsVersionId": os_id,
             "ManagerVersionId": mgr_id,
             "SerialNumber": sn,
-            "TmsId": int(row["id"]),
+            "TmsId": int(r.id),
             "Tusn": tusn,
         })
 
