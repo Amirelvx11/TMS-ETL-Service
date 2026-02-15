@@ -11,14 +11,19 @@ ENV \
     PIP_RETRIES=10
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git gcc build-essential pkg-config unixodbc-dev default-libmysqlclient-dev \
+    git openssh-client  gcc build-essential pkg-config unixodbc-dev default-libmysqlclient-dev \
  && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt .
-RUN pip wheel \
-    --wheel-dir /wheels \
-    -r requirements.txt
+RUN mkdir -p /root/.ssh && chmod 700 /root/.ssh && \
+    ssh-keyscan github.com ssh.github.com >> /root/.ssh/known_hosts
 
+RUN python -m pip install --upgrade pip setuptools wheel
+
+COPY requirements.txt .
+
+RUN --mount=type=ssh \
+    pip wheel --wheel-dir /wheels -r requirements.txt
+	
 # Runtime Stage
 FROM python:3.12-slim
 
@@ -35,9 +40,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     gnupg \
+    openssh-client \
  && ln -fs /usr/share/zoneinfo/Asia/Tehran /etc/localtime \
  && dpkg-reconfigure -f noninteractive tzdata \
  && rm -rf /var/lib/apt/lists/*
+
 
 # MSSQL ODBC Driver (runtime)
 RUN curl https://packages.microsoft.com/keys/microsoft.asc \
