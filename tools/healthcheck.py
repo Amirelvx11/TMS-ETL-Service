@@ -1,4 +1,5 @@
-import os, sys
+import os
+import sys
 from datetime import datetime, timedelta, time as dt_time
 from zoneinfo import ZoneInfo
 from pymongo import MongoClient
@@ -8,21 +9,33 @@ from sqlalchemy.exc import SQLAlchemyError
 
 IRAN = ZoneInfo("Asia/Tehran")
 
-ALLOWED_START = dt_time(8, 0)
-ALLOWED_END = dt_time(20, 0)
+RUN_TIMES = (
+    dt_time(9, 0),   # 09:00
+    dt_time(19, 0),  # 19:00
+)
 
-# Scheduler ticks every minute, ETL hourly
+RUN_TOLERANCE_MINUTES = 1  # cron / scheduler drift tolerance
 HEALTH_WINDOW_MINUTES = 120
 
 
-def within_allowed_window(now: datetime) -> bool:
-    """08:00 → 20:00 window"""
-    return ALLOWED_START <= now.time() <= ALLOWED_END
+def should_run(now: datetime) -> bool:
+    """
+    Allow execution only at 09:00 or 19:00 (± tolerance).
+    """
+    for t in RUN_TIMES:
+        scheduled = now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
+        if abs((now - scheduled).total_seconds()) <= RUN_TOLERANCE_MINUTES * 60:
+            return True
+    return False
 
 
 def main() -> None:
-    
     now = datetime.now(IRAN)
+
+    # ---- HARD TIME GATE ----
+    if not should_run(now):
+        sys.exit(0)
+
     cutoff = now - timedelta(minutes=HEALTH_WINDOW_MINUTES)
     cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
     
@@ -43,9 +56,20 @@ def main() -> None:
             sys.exit(1)
 
     # --- Mongo ---
-    client = MongoClient(os.environ["BT_MONGO_URI"], serverSelectionTimeoutMS=3000,)
-    col = client[os.environ["BT_MONGO_DB"]][os.environ["BT_MONGO_COLLECTION"]]
-    client.admin.command("ping")
+    try:
+        client = MongoClient(
+            os.environ["BT_MONGO_URI"],
+            serverSelectionTimeoutMS=3000,
+        )
+        client.admin.command("ping")
+
+        col = client[
+            os.environ["BT_MONGO_DB"]
+        ][
+            os.environ["BT_MONGO_COLLECTION"]
+        ]
+    except Exception:
+        sys.exit(1)
 
     base_query = {
         "app": os.environ["BT_APP_NAME"],
@@ -53,20 +77,20 @@ def main() -> None:
         "timestamp": {"$gte": cutoff_str},
     }
 
-    # --- Recent activity (scheduler / ETL ran or ticked) ---
+    # ---- RECENT ACTIVITY CHECK ----
     last_log = col.find_one(
         base_query,
         sort=[("timestamp", -1)],
     )
 
-    if within_allowed_window(now) and not last_log:
+    if not last_log:
         sys.exit(1)
 
-    # --- Error detection ---
+    # ---- ERROR LOG CHECK ----
     error_log = col.find_one(
         {
             **base_query,
-            "level": {"$in": ["ERROR", "CRITICAL"]},
+            "level": {"$in": ("ERROR", "CRITICAL")},
         }
     )
     if error_log:
@@ -104,7 +128,7 @@ def main() -> None:
     except SQLAlchemyError:
         sys.exit(1)
         
-    # ALL VALIDATION & TESTS PASSED & SUCCESSFUL!
+    # ---- ALL CHECKS PASSED ----
     sys.exit(0)
 
 
