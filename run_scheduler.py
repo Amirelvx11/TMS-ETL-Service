@@ -52,7 +52,7 @@ def main() -> None:
         "scheduler started",
         extra={
             "timezone": "Asia/Tehran",
-            "run_hours": sorted(RUN_HOURS),
+            "run_hours": f"{min(RUN_HOURS)}-{max(RUN_HOURS)}",
         },
     )
 

@@ -21,7 +21,7 @@ services:
     command: ["python", "/app/run_scheduler.py"]
 
     healthcheck:
-      test: ["CMD", "python", "-m", "healthcheck.healthcheck"]
+      test: ["CMD", "python", "-m", "tools.healthcheck"]
       interval: 5m
       timeout: 10s
       retries: 3
