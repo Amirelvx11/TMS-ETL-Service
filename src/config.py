@@ -22,10 +22,10 @@ USER_GUID = _require_env("USER_GUID") # ADMIN GUID (for data submission)
 src_engine = create_engine(
     SOURCE_DB,
     pool_pre_ping=True,
+    pool_size=5,
     max_overflow=5,
     pool_timeout=5,
     pool_recycle=3600,
-    echo=True,
 )
 
 dst_engine = create_engine(
