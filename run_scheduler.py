@@ -17,6 +17,7 @@ last_run: dict[int, date] = {}
 def validate_env() -> None:
     required_vars = [
         "SOURCE_DB",
+        "TARGET_DB",
         "BT_MONGO_URI",
         "BT_MONGO_DB",
         "BT_MONGO_COLLECTION",
