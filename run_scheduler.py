@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from backend_toolkit.logger import get_logger
 from main import run as run_etl
@@ -9,10 +9,9 @@ logger = get_logger("scheduler")
 
 IRAN = ZoneInfo("Asia/Tehran")
 CHECK_INTERVAL_SECONDS = 60
-ALLOWED_START = 8
-ALLOWED_END = 20  # inclusive
+RUN_HOURS = {9, 19}
 
-last_run_hour = None
+last_run: dict[int, date] = {}
 
 
 def validate_env() -> None:
@@ -31,19 +30,17 @@ def validate_env() -> None:
         )
         raise RuntimeError(f"Missing env vars: {missing}")
 
-    logger.info("environment validation passed")
-
 
 def should_run(now: datetime) -> bool:
-    global last_run_hour
+    today = now.date()
+    hour = now.hour
 
-    if not (ALLOWED_START <= now.hour <= ALLOWED_END):
+    if hour not in RUN_HOURS:
         return False
 
-    if last_run_hour == now.hour:
+    if last_run.get(hour) == today:
         return False
 
-    last_run_hour = now.hour
     return True
 
 
@@ -54,7 +51,7 @@ def main() -> None:
         "scheduler started",
         extra={
             "timezone": "Asia/Tehran",
-            "allowed_hours": f"{ALLOWED_START}-{ALLOWED_END}",
+            "run_hours": sorted(RUN_HOURS),
         },
     )
 
@@ -65,9 +62,10 @@ def main() -> None:
             if should_run(now):
                 logger.info(
                     "scheduler triggering ETL",
-                    extra={"hour": now.hour},
+                    extra={"time(hour)": now.hour},
                 )
                 run_etl()
+                last_run[now.hour] = now.date()
         except Exception:
             logger.exception("scheduler error")
 
