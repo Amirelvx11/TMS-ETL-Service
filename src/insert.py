@@ -24,7 +24,7 @@ def insert_products(df: pd.DataFrame) -> int:
                 index=False,
                 chunksize=500
             )
-        logger.info(
+        logger.debug(
             "products inserted",
             extra={"count": len(df)},
         )
@@ -59,19 +59,9 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
     now = datetime.now()
     rows_to_insert = []
 
-    for _, p in df_products.iterrows():
-        if p["Id"] in existing_ids:
+    for r in df_products.itertuples(index=False):
+        if r.Id in existing_ids or r.ProductionDate is None:
             continue
-
-        start_date = p["ProductionDate"]
-        if start_date is None:
-            logger.warning(
-                "Skipping guaranty due to NULL ProductionDate",
-                extra={"product_id": p["Id"]},
-            )
-            continue
-
-        end_date = start_date + timedelta(days=30 * 19)
 
         rows_to_insert.append({
             "IsActive": 1,
@@ -81,12 +71,12 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
             "ModifiedBy": USER_GUID,
             "ModifiedOn": now,
             "OwnerId": USER_GUID,
-            "DeviceId": p["Id"],
-            "StartDate": start_date,
-            "EndDate": end_date,
+            "DeviceId": r.Id,
+            "StartDate": r.ProductionDate,
+            "EndDate": r.ProductionDate + timedelta(days=30 * 19),
             "Cancellation": 0,
             "Description": None,
-            "ProductId": p["Id"]
+            "ProductId": r.Id
         })
 
     if not rows_to_insert:
@@ -101,7 +91,7 @@ def insert_guaranty(df_products: pd.DataFrame) -> int:
             index=False,
             chunksize=500
         )
-        logger.info(
+        logger.debug(
             "guaranty inserted",
             extra={"count": len(rows_to_insert)},
         )
