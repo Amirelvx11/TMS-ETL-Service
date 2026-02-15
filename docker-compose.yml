@@ -2,7 +2,11 @@ services:
   tms_etl_service:
     container_name: tms_etl
     image: tms-etl-service
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile
+      ssh:
+        - default
     restart: always
 
     env_file:
