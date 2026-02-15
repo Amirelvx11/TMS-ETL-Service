@@ -10,29 +10,31 @@ from .config import src_engine, dst_engine, USER_GUID
 logger = get_logger("fetch")
 
 
-# ---------- HELPER METHODS ----------
-
+# ---------- HELPERS ----------
 
 def normalize_os(value: str) -> str:
     if not value:
         return ""
-    value = value.strip().upper()
-    return re.sub(r"[A-Z]$", "", value)
+    v = value.strip().upper()
+    # Remove ONLY single trailing letter after digit (e.g. 7.6A → 7.6)
+    return re.compile(r"(\d)([A-Z])$").sub(r"\1", v)
 
 
 def manager_exact(value: str) -> str:
-    return value.strip().upper()
+    return value.strip().upper() if value else ""
 
 
 def manager_short(value: str) -> str:
+    if not value:
+        return ""
     v = value.strip().upper()
     return v[2:] if len(v) > 2 and v[:2].isalpha() else v
 
 
-# ---------- FETCH & VERSION CHECK ----------
+# ---------- VERSION ENSURE ----------
 
 
-def ensure_version_exists_os(raw: str) -> str:
+def ensure_version_exists_os(raw: str) -> str | None:
     """OS version checking.
     - if Version Title exist -> use that existing guid From Os Table
     - if not -> create & insert new version in OS Table
@@ -41,7 +43,7 @@ def ensure_version_exists_os(raw: str) -> str:
     if not title:
         return None
 
-    sql_sel = "SELECT Id FROM Hamon.mfu.OperatingSystem WITH(NOLOCK) WHERE UPPER(Title) = :t"
+    sql_sel = "SELECT Id FROM Hamon.mfu.OperatingSystem WITH (NOLOCK) WHERE UPPER(Title) = :t"
     with dst_engine.begin() as conn:
         row = conn.execute(text(sql_sel), {"t": title}).fetchone()
         if row:
@@ -97,6 +99,23 @@ def ensure_version_exists_manager(raw: str) -> str:
         return new_id
 
 
+def resolve_missing_versions(df, os_map, mgr_exact, mgr_short):
+    for raw in df["cosver"].dropna().unique():
+        key = normalize_os(raw)
+        if key and key not in os_map:
+            os_map[key] = ensure_version_exists_os(raw)
+
+    for raw in df["libver"].dropna().unique():
+        ex = manager_exact(raw)
+        sh = manager_short(raw)
+        if ex not in mgr_exact and sh not in mgr_short:
+            new_id = ensure_version_exists_manager(raw)
+            mgr_exact[ex] = new_id
+            mgr_short[sh] = new_id
+
+
+# ---------- FETCH ----------
+
 def fetch_lookup_maps():
     "Get last os & manager versions from Target DB."
     try:
@@ -104,12 +123,12 @@ def fetch_lookup_maps():
             os_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.OperatingSystem WITH (NOLOCK)", conn)
             mgr_df = pd.read_sql("SELECT Id, Title FROM Hamon.mfu.Manager WITH (NOLOCK)", conn)
 
-        os_map = {normalize_os(r["Title"]): r["Id"] for _, r in os_df.iterrows()}
-        mgr_exact  = {manager_exact(r["Title"]): r["Id"] for _, r in mgr_df.iterrows()}
-        mgr_short  = {manager_short(r["Title"]): r["Id"] for _, r in mgr_df.iterrows()}
+        os_map = {normalize_os(t): i for i, t in os_df.itertuples(index=False)}
+        mgr_exact = {manager_exact(t): i for i, t in mgr_df.itertuples(index=False)}
+        mgr_short = {manager_short(t): i for i, t in mgr_df.itertuples(index=False)}
 
         return os_map, mgr_exact, mgr_short
-    except SQLAlchemyError as e:
+    except SQLAlchemyError:
         logger.exception("Lookup map fetch failed")
         return {}, {}, {}
 
@@ -137,7 +156,7 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         with src_engine.connect() as conn:
             df = pd.read_sql(sql, conn, params={"last_id": last_id})
         if len(df) > 0:
-            logger.info(
+            logger.debug(
                 "fetched source rows",
                 extra={
                     "count": len(df),
