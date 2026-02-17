@@ -64,7 +64,10 @@ def main() -> None:
     base_query = {
         "app": os.environ["BT_APP_NAME"],
         "environment": os.environ["BT_ENVIRONMENT"],
-        "timestamp": {"$gte": cutoff_str},
+        "$or": [
+            {"timestamp": {"$gte": cutoff}}, #datetime
+            {"timestamp": {"$gte": cutoff_str}},
+        ],
     }
 
     # ---- RECENT ACTIVITY CHECK ----
