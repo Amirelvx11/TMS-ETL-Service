@@ -5,16 +5,16 @@ from backend_toolkit.logger import get_logger
 from .config import USER_GUID
 from .fetch import normalize_os, manager_exact, manager_short
 
-
 logger = get_logger("transform")
 
 
-def transform_products(df, os_map, mgr_exact, mgr_short) -> pd.DataFrame | None:
+def transform_products(df: pd.DataFrame, os_map, mgr_exact, mgr_short) -> pd.DataFrame | None:
     """Transform source rows into the product format."""
     if df.empty:
         return pd.DataFrame()
 
     now = datetime.now()
+    default_date = now.date()
     products = []
 
     for r in df.itertuples(index=False):
@@ -41,7 +41,7 @@ def transform_products(df, os_map, mgr_exact, mgr_short) -> pd.DataFrame | None:
 
 
         prod_dt = pd.to_datetime(r.datetime, errors="coerce")
-        prod_date = prod_dt.date() if pd.notna(prod_dt) else None
+        prod_date = prod_dt.date() if pd.notna(prod_dt) else default_date
 
         products.append({
             "Id": str(uuid.uuid4()).upper(),
@@ -54,7 +54,7 @@ def transform_products(df, os_map, mgr_exact, mgr_short) -> pd.DataFrame | None:
             "PartId": part_id,
             "IMEI1": imei1,
             "IMEI2": imei2,
-            "HamtaCode": "",
+            "HamtaCode": "", # Will be filled by sync_hamta_code later
             "ProductionDate": prod_date,
             "OsVersionId": os_id,
             "ManagerVersionId": mgr_id,
