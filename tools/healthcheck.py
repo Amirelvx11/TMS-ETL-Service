@@ -1,6 +1,6 @@
 import os
 import sys
-from datetime import datetime, timedelta, time as dt_time
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from pymongo import MongoClient
 from sqlalchemy import create_engine, text
@@ -9,36 +9,26 @@ from sqlalchemy.exc import SQLAlchemyError
 
 IRAN = ZoneInfo("Asia/Tehran")
 
-RUN_TIMES = (
-    dt_time(9, 0),   # 09:00
-    dt_time(19, 0),  # 19:00
-)
+ALLOWED_START_HOUR = 8
+ALLOWED_END_HOUR = 19
 
-RUN_TOLERANCE_MINUTES = 1  # cron / scheduler drift tolerance
-HEALTH_WINDOW_MINUTES = 120
+HEALTH_WINDOW_MINUTES = 5  # last 5 minutes of ETL activity
 
 
-def should_run(now: datetime) -> bool:
-    """
-    Allow execution only at 09:00 or 19:00 (± tolerance).
-    """
-    for t in RUN_TIMES:
-        scheduled = now.replace(hour=t.hour, minute=t.minute, second=0, microsecond=0)
-        if abs((now - scheduled).total_seconds()) <= RUN_TOLERANCE_MINUTES * 60:
-            return True
-    return False
+def is_inside_window(now: datetime) -> bool:
+    return ALLOWED_START_HOUR <= now.hour <= ALLOWED_END_HOUR
 
 
 def main() -> None:
     now = datetime.now(IRAN)
 
-    # ---- HARD TIME GATE ----
-    if not should_run(now):
+    # ---- TIME GATE ----
+    if not is_inside_window(now):
         sys.exit(0)
 
     cutoff = now - timedelta(minutes=HEALTH_WINDOW_MINUTES)
     cutoff_str = cutoff.strftime("%Y-%m-%d %H:%M:%S")
-    
+
     # --- ENV Validation ---
     REQUIRED = [
         "SOURCE_DB",
@@ -55,7 +45,7 @@ def main() -> None:
         if not os.getenv(key):
             sys.exit(1)
 
-    # --- Mongo ---
+    # --- Mongo CONNECTIVITY ---
     try:
         client = MongoClient(
             os.environ["BT_MONGO_URI"],
@@ -63,7 +53,7 @@ def main() -> None:
         )
         client.admin.command("ping")
 
-        col = client[
+        collection = client[
             os.environ["BT_MONGO_DB"]
         ][
             os.environ["BT_MONGO_COLLECTION"]
@@ -78,7 +68,7 @@ def main() -> None:
     }
 
     # ---- RECENT ACTIVITY CHECK ----
-    last_log = col.find_one(
+    last_log = collection.find_one(
         base_query,
         sort=[("timestamp", -1)],
     )
@@ -87,7 +77,7 @@ def main() -> None:
         sys.exit(1)
 
     # ---- ERROR LOG CHECK ----
-    error_log = col.find_one(
+    error_log = collection.find_one(
         {
             **base_query,
             "level": {"$in": ("ERROR", "CRITICAL")},
@@ -102,13 +92,13 @@ def main() -> None:
 
         HEALTHY_MARKERS = (
             "scheduler","triggering","started","validation",
-            "fetched","inserted","completed","finished",
+            "running","fetched","inserted","completed","finished",
         )
 
         if not any(m in msg for m in HEALTHY_MARKERS):
             sys.exit(1)
 
-    # --- DB Connection Check ---
+    # --- DB CONNECTIVITY ---
     try:
         src_engine = create_engine(
             os.environ["SOURCE_DB"],
@@ -127,7 +117,7 @@ def main() -> None:
             conn.execute(text("SELECT 1"))
     except SQLAlchemyError:
         sys.exit(1)
-        
+
     # ---- ALL CHECKS PASSED ----
     sys.exit(0)
 

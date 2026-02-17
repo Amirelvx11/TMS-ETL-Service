@@ -1,6 +1,6 @@
 import os
 import time
-from datetime import datetime, date
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from backend_toolkit.logger import get_logger
 from main import run as run_etl
@@ -8,10 +8,13 @@ from main import run as run_etl
 logger = get_logger("scheduler")
 
 IRAN = ZoneInfo("Asia/Tehran")
-CHECK_INTERVAL_SECONDS = 60
-RUN_HOURS = {9, 19}
 
-last_run: dict[int, date] = {}
+CHECK_INTERVAL_SECONDS = 60
+
+ALLOWED_START_HOUR = 8   # inclusive
+ALLOWED_END_HOUR = 19    # inclusive
+
+last_run_minute: datetime | None = None
 
 
 def validate_env() -> None:
@@ -32,14 +35,19 @@ def validate_env() -> None:
         raise RuntimeError(f"Missing env vars: {missing}")
 
 
-def should_run(now: datetime) -> bool:
-    today = now.date()
-    hour = now.hour
+def is_allowed_time(now: datetime) -> bool:
+    return ALLOWED_START_HOUR <= now.hour <= ALLOWED_END_HOUR
 
-    if hour not in RUN_HOURS:
+
+def should_run(now: datetime) -> bool:
+    global last_run_minute
+
+    if not is_allowed_time(now):
         return False
 
-    if last_run.get(hour) == today:
+    current_minute = now.replace(second=0, microsecond=0)
+
+    if last_run_minute == current_minute:
         return False
 
     return True
@@ -48,27 +56,17 @@ def should_run(now: datetime) -> bool:
 def main() -> None:
     validate_env()
 
-    logger.info(
-        "scheduler started",
-        extra={
-            "timezone": "Asia/Tehran",
-            "run_hours": f"{min(RUN_HOURS)}-{max(RUN_HOURS)}",
-        },
-    )
-
     while True:
         try:
             now = datetime.now(IRAN)
 
             if should_run(now):
-                logger.info(
-                    "scheduler triggering ETL",
-                    extra={"time(hour)": now.hour},
-                )
                 run_etl()
-                last_run[now.hour] = now.date()
-        except Exception:
-            logger.exception("scheduler error")
+
+                global last_run_minute
+                last_run_minute = now.replace(second=0, microsecond=0)
+        except Exception as e:
+            logger.exception("scheduler error",extra={"exception":e},)
 
         time.sleep(CHECK_INTERVAL_SECONDS)
 
