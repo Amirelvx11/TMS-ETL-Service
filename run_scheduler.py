@@ -55,18 +55,20 @@ def should_run(now: datetime) -> bool:
 
 def main() -> None:
     validate_env()
-
+    
+    logger.info(f"Scheduler started. Window: {ALLOWED_START_HOUR}:00 - {ALLOWED_END_HOUR}:59")
     while True:
         try:
             now = datetime.now(IRAN)
 
             if should_run(now):
                 run_etl()
-
+                
                 global last_run_minute
                 last_run_minute = now.replace(second=0, microsecond=0)
         except Exception as e:
-            logger.exception("scheduler error",extra={"exception":e},)
+            logger.exception("scheduler iteration failed")
+            time.sleep(60)
 
         time.sleep(CHECK_INTERVAL_SECONDS)
 
