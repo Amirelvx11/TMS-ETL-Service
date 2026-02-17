@@ -150,6 +150,7 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         SELECT id, tusn, sn, imei, libver, cosver, datetime
         FROM h_tool.tab_reader_barcode AS trb
         WHERE trb.id > :last_id
+	AND trb.datetime <= (NOW() - INTERVAL 60 SECOND)
         ORDER BY trb.id ASC
     """)
     try:
