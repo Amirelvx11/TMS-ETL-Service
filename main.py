@@ -17,16 +17,7 @@ def run():
 
         df_src = fetch_source_rows(start_last_id)
         if df_src.empty:
-            logger.info(
-                "ETL cycle finished - No New Data",
-                extra={"start_tms_id": start_last_id},
-            )
             return
-
-        logger.info(
-            "ETL cycle started",
-            extra={"start_tms_id": start_last_id},
-        )
 
         os_map, mgr_exact, mgr_short = fetch_lookup_maps()
         resolve_missing_versions(df_src, os_map, mgr_exact, mgr_short)
@@ -51,6 +42,7 @@ def run():
     except Exception as e:
         logger.critical("main etl cycle error")
         raise
+
 
 if __name__ == "__main__":
     run()
