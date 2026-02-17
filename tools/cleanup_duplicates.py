@@ -19,7 +19,7 @@ def cleanup_duplicate_products(lookback_hours: int = 336) -> int:
 
         if deleted > 0:
             logger.warning(
-                "Duplicate cleanup removed %s records (lookback_hours=%s)",
+                "cleanup cycle completed - removed duplicate records (based on serial numbers)",
                 extra={
                     "deleted_counts":deleted,
                     "lookback_hours":lookback_hours,
