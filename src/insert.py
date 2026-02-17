@@ -6,7 +6,6 @@ from sqlalchemy.exc import SQLAlchemyError
 from backend_toolkit.logger import get_logger
 from .config import dst_engine, USER_GUID
 
-
 logger = get_logger("insert")
 
 
