@@ -1,6 +1,7 @@
 import os
 import time
-from datetime import datetime
+from typing import Optional
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 from backend_toolkit.logger import get_logger
 from tools.cleanup_duplicates import cleanup_duplicate_products
@@ -15,8 +16,8 @@ CHECK_INTERVAL_SECONDS = 60
 ALLOWED_START_HOUR = 8   # inclusive
 ALLOWED_END_HOUR = 19    # inclusive
 
-last_run_minute: datetime | None = None
-last_cleanup_date: datetime.date | None = None
+last_run_minute: Optional[datetime] = None
+last_cleanup_date: Optional[date] = None
 
 
 def validate_env() -> None:
@@ -42,7 +43,7 @@ def should_run_cleanup(now: datetime) -> bool:
 
     # if not is_allowed_time(now):
     #     return False
-    
+
     # run once per day at 18:00
     if now.hour != 18 or now.minute != 0:
         return False
@@ -75,7 +76,7 @@ def should_run(now: datetime) -> bool:
 
 def main() -> None:
     validate_env()
-    
+
     logger.info(f"Scheduler started. Window: {ALLOWED_START_HOUR}:00 - {ALLOWED_END_HOUR}:59")
     while True:
         try:
