@@ -16,7 +16,6 @@ def run():
     """Main function to run the ETL pipeline."""
     try:
         start_ts = time.monotonic()
-        cleanup_duplicate_products()
         start_last_id = get_last_tms_id()
 
         df_src = fetch_source_rows(start_last_id)
@@ -27,6 +26,13 @@ def run():
         resolve_missing_versions(df_src, 
                                  os_map, mgr_exact, mgr_short)
         df_prod = transform_products(df_src, os_map, mgr_exact, mgr_short)
+        if df_prod is None:
+            logger.info(
+                "batch deferred – incomplete source data",
+                extra={"incomplete_df":str(df_prod)},
+                )
+            return  # retry next scheduler run
+
 
         inserted_products = insert_products(df_prod)
         inserted_guaranty = insert_guaranty(df_prod) if inserted_products else 0
