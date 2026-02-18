@@ -16,20 +16,20 @@ services:
       - logs_net
 
     volumes:
-      - tms-etl-service_logs:/var/log
+      - tms-etl-service-logs:/var/log
 
     command: ["python", "/app/run_scheduler.py"]
 
     healthcheck:
-      test: ["CMD", "python", "-m", "tools.healthcheck || exit 1"]
+      test: ["CMD-SHELL", "python -m tools.healthcheck || exit 1"]
       interval: 2m
       timeout: 10s
       retries: 3
       start_period: 10m
 
 volumes:
-  tms-etl-service_logs:
-    name: tms-etl-service_logs
+  tms-etl-service-logs:
+    name: tms-etl-service-logs
     external: true
 
 networks:
