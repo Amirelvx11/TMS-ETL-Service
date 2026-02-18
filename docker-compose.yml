@@ -30,7 +30,6 @@ services:
 volumes:
   tms-etl-service-logs:
     name: tms-etl-service-logs
-    external: true
 
 networks:
   logs_net:
