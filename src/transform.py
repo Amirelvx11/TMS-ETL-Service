@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import datetime
 from backend_toolkit.logger import get_logger
 from .config import USER_GUID
-from .fetch import normalize_os, manager_exact, manager_short
+from .fetch import normalize_os, manager_exact, manager_short, is_complete_row
 
 logger = get_logger("transform")
 
@@ -12,6 +12,18 @@ def transform_products(df: pd.DataFrame, os_map, mgr_exact, mgr_short) -> pd.Dat
     """Transform source rows into the product format."""
     if df.empty:
         return pd.DataFrame()
+
+    invalid_rows = [r.id for r in df.itertuples(index=False) if not is_complete_row(r)]
+
+    if invalid_rows:
+        logger.warning(
+            "incomplete rows detected – deferring batch",
+            extra={
+                "count": len(invalid_rows),
+                "sample_ids": invalid_rows[:5],
+            },
+        )
+        return None
 
     now = datetime.now()
     default_date = now.date()

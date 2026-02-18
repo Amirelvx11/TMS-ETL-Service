@@ -30,6 +30,23 @@ def manager_short(value: str) -> str:
     return v[2:] if len(v) > 2 and v[:2].isalpha() else v
 
 
+def is_complete_row(r) -> bool:
+    if not r.tusn or not r.tusn.strip():
+        return False
+
+    imei = (r.imei or "").strip()
+    if not imei or imei == "0":
+        return False
+
+    if not r.cosver or not r.cosver.strip():
+        return False
+
+    if not r.libver or not r.libver.strip():
+        return False
+
+    return True
+
+
 # ---------- VERSION ENSURE ----------
 
 
@@ -149,7 +166,13 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
         SELECT id, tusn, sn, imei, libver, cosver, datetime
         FROM h_tool.tab_reader_barcode AS trb
         WHERE trb.id > :last_id
-	AND trb.datetime <= (NOW() - INTERVAL 60 SECOND)
+	    AND trb.datetime <= (NOW() - INTERVAL 80 SECOND)
+        AND trb.imei IS NOT NULL
+        AND TRIM(trb.imei) <> ''
+        AND trb.cosver IS NOT NULL
+        AND TRIM(trb.cosver) <> ''
+        AND trb.tusn IS NOT NULL
+        AND TRIM(trb.tusn) <> ''
         ORDER BY trb.id ASC
     """)
     try:
@@ -160,7 +183,7 @@ def fetch_source_rows(last_id: int) -> pd.DataFrame:
                 "fetched source rows",
                 extra={
                     "count": len(df),
-                    "from_tms_id": last_id,
+                    "from_tms_id_exclusive": last_id,
                 },
             )
         return df
