@@ -11,8 +11,8 @@ SET
     p.HamtaCode  = h.Code,
     p.ModifiedOn = SYSDATETIME(),
     p.ModifiedBy = :user
-FROM Hamon.mfu.Product p WITH (NOLOCK)
-JOIN Hamon.mfu.HamtaCode h WITH (NOLOCK)
+FROM Hamon.mfu.Product p (NOLOCK)
+JOIN Hamon.mfu.HamtaCode h (NOLOCK)
     ON p.SerialNumber = h.Serial
 WHERE
     p.TmsId > :last_tms_id
