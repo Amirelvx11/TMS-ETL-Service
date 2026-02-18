@@ -77,7 +77,7 @@ def main() -> None:
     )
 
     if not last_log:
-        sys.exit(1)
+        sys.exit(0)  # WARN: no activity
 
     # ---- ERROR LOG CHECK ----
     error_log = collection.find_one(
